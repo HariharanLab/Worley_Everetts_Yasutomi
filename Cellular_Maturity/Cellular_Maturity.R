@@ -31,6 +31,8 @@ temporalGenes = temporalGenes$x
 temporalGenes[temporalGenes == "br"]
 ```
 
-# Next we ran PCA on the single-cell data only considering these temporal genes (using Seurat) 
+# Next we ran Principal Component Analysis (PCA) on the single-cell data only considering these temporal genes.
+# We investigating how the principal components seperated the data
 
+# We converted the PC1 into a score of cellular maturity or developmental progression
 
