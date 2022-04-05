@@ -22,12 +22,14 @@ library(viridis)
 ```
 
 ```{r}
+
+# temporalGenes file was created by comparing the Epithelial cells from different time points in development (96h and 120h AEL, or mid and later 3rd instar)
+
 temporalGenes = read.csv( file = "~/Epithelum_temporalGenes_265.csv", stringsAsFactors = FALSE)
 
 temporalGenes = temporalGenes$x
 
 # An example of a gene with differential expression during normal development: 
-
 temporalGenes[temporalGenes == "br"]
 ```
 
@@ -37,13 +39,14 @@ temporalGenes[temporalGenes == "br"]
 # We converted the PC1 into a score of cellular maturity or developmental progression
 
 ```{r}
-#CellularMaturity$Batch_Idents
+
+
+# This creats a new Seurat Object that runs PCA based on a set of genes that change during normal developmet: 
+
 CellularMaturity = RunPCA( ScVI_intergratedObject , features = temporalGenes )
-#Hinge_PouchScore$scVI_newNames
-#Hinge_PouchScore@reductions$pca@cell.embeddings
+
 DimPlot(CellularMaturity, reduction = "pca")
 RidgePlot(CellularMaturity, "PC_1", group.by = "Batch_Idents")
 VlnPlot( CellularMaturity, "PC_1", pt.size = 0,  group.by = "Batch_Idents")
 
-#VlnPlot( Hinge_PouchScore, "PC_1", pt.size = 0, group.by = "scVI_newNames")
 ```
