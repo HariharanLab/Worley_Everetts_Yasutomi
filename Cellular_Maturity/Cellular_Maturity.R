@@ -45,8 +45,19 @@ temporalGenes[temporalGenes == "br"]
 
 CellularMaturity = RunPCA( ScVI_intergratedObject , features = temporalGenes )
 
+# this allows us to see how individual cells from the distint batches express these different temporal genes. 
+# first we checkout how the PC1 and PC2 seperates the data:
 DimPlot(CellularMaturity, reduction = "pca")
+
+# Then we visualized the data in different ways to determine the relative cellular maturity score for distinct batchs and clusters 
 RidgePlot(CellularMaturity, "PC_1", group.by = "Batch_Idents")
 VlnPlot( CellularMaturity, "PC_1", pt.size = 0,  group.by = "Batch_Idents")
+VlnPlot( CellularMaturity, "PC_1", pt.size = 0,  group.by = "named_cluster_ID")
 
 ```
+
+
+
+
+
+
