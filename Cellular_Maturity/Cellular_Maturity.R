@@ -36,3 +36,14 @@ temporalGenes[temporalGenes == "br"]
 
 # We converted the PC1 into a score of cellular maturity or developmental progression
 
+```{r}
+#CellularMaturity$Batch_Idents
+CellularMaturity = RunPCA( ScVI_intergratedObject , features = temporalGenes )
+#Hinge_PouchScore$scVI_newNames
+#Hinge_PouchScore@reductions$pca@cell.embeddings
+DimPlot(CellularMaturity, reduction = "pca")
+RidgePlot(CellularMaturity, "PC_1", group.by = "Batch_Idents")
+VlnPlot( CellularMaturity, "PC_1", pt.size = 0,  group.by = "Batch_Idents")
+
+#VlnPlot( Hinge_PouchScore, "PC_1", pt.size = 0, group.by = "scVI_newNames")
+```
