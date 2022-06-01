@@ -68,10 +68,10 @@ slingshot_object <- slingshot(cell_reduction,
 We can visualize each inferred each lineage on UMAP / tSNE by coloring cells by their calculated pseudotime.
 ```{r}
 #define the name of the visualization reduction to use for plotting (e.g., UMAP, tSNE)
-Visual_name <- "scVI_UMAP"
+visual_name <- "scVI_UMAP"
 
 ss_pseudo_matrix <- slingPseudotime(slingshot_object) #extract the pseudotime values for each cell along each lineage
-cell_visualization <- Embeddings(seurat_subset, reduction = Visual_name)
+cell_visualization <- Embeddings(seurat_subset, reduction = visual_name)
 plot_data <- as.data.frame(cbind(cell_visualization, ss_pseudo_matrix))
 
 #for each lineage, create a separate UMAP / tSNE plot where cells are colored by pseudotime
