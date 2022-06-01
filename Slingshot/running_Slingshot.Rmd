@@ -1,6 +1,6 @@
 ---
 title: "running_Slingshot"
-author: "Nicholas Everetts"
+author: "Worley, Everetts, et al."
 ---
 
 This notebook describes how pseudotime was calculated via Slingshot in the Worley, Everetts, et al. 2022 paper. As a starting point, we expect that the user has their single-cell data processed and stored within a Seurat object (https://satijalab.org/seurat/). Other single-cell data formats can be used, but the code will need to be modified appropriately.
