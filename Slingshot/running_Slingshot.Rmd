@@ -1,0 +1,169 @@
+---
+title: "running_Slingshot"
+author: "Nicholas Everetts"
+---
+
+This notebook describes how pseudotime was calculated via Slingshot in the Worley, Everetts, et al. 2022 paper. As a starting point, we expect that the user has their single-cell data processed and stored within a Seurat object (https://satijalab.org/seurat/). Other single-cell data formats can be used, but the code will need to be modified appropriately.
+
+First, we load the required packages to run Slingshot and generate plots.
+```{r}
+#if these packages are not installed, install them with install.packages
+library(slingshot)
+library(Seurat)
+library(ggplot2)
+library(ggnewscale)
+library(scales)
+library(viridis)
+library(cowplot)
+```
+
+If not already in memory, load the Seurat object.
+```{r}
+#you can define the path to your Seurat object below
+path_to_seurat_object <- "path/to/object.rds"
+seurat_object <- readRDS(file = path_to_seurat_object)
+```
+
+In the following code chunk, we define which cluster identities we want to input into Slingshot (this is required for the pseudotime algorithm). In our Worley, Everetts, et al. 2022 paper, we only calculate pseudotime across a subset of clusters. Specifically, we calculate pseudotime over cells classified as Blastema, Pouch, and Hinge. As a result, the following code attempts to select clusters labeled as Blastema, Pouch, or Hinge, so this should be changed appropriately to fit your data.
+
+If you do NOT want to subset the data (you want to run Slingshot on all cells / clusters), you can:
+(1) Set "clusters_to_analyze" to be all clusters within your data (don't run the line with grep(pattern = ...)).
+(2) Replace all instances of "seurat_subset" with "seurat_object" (or the name of your original Seurat object),
+```{r}
+#define which clusters you want to use for Slingshot analysis
+#clusters_to_use needs to be set to the name within your Seurat object that corresponds to your clusters (default is likely "seurat_clusters")
+clusters_to_use <- "seurat_clusters"
+
+clusters_to_analyze <- as.character(unique(seurat_object[[clusters_to_use, drop = TRUE]]))
+
+#we subset the clusters to only select those with Blastema, Pouch, and Hinge annotations
+#change the "pattern" parameter as needed, or skip the following line if you don't want to subset your clusters
+clusters_to_analyze <- clusters_to_analyze[grep(pattern = "Blastema|Pouch|Hinge", x = clusters_to_analyze)]
+
+cat("The following clusters will be used for the Slingshot analysis:\n", clusters_to_analyze)
+```
+
+A new Seurat object is created with only the subsetted clusters. If you did not subset your clusters, then this new Seurat object will simply be a duplicate of your original Seurat object.
+```{r}
+seurat_subset <- subset(seurat_object,
+                        cells = colnames(seurat_object)[seurat_object[[clusters_to_use, drop = TRUE]] %in% clusters_to_analyze])
+```
+
+The following code chunk runs the Slingshot algorithm. As inputs, we provide a reduction derived from the single-cell data (e.g., scVI, PCA) and cluster labels. In our Worley, Everetts, et al. 2022 paper, we define "Blastema1" as the starting cluster for pseudotime inference, but this is optional.
+
+While you can use visualization reductions such as UMAP and tSNE as the input to Slingshot, we recommend against doing so. We recommend using the outputs produced from dimensionality reduction tools such as scVI or PCA, which provide more accurate representations of single-cell data compared to the 2-dimensional outputs from UMAP / tSNE.
+```{r}
+#define the name of the reduction to use as input for Slingshot (e.g., scVI, PCA, UMAP, etc.)
+reduction_name <- "scVI"
+
+#define the starting clusters for pseudotime inference (or set to NULL if you don't want to define a starting cluster)
+starting_cluster <- "Blastema1"
+
+cell_reduction <- Embeddings(seurat_subset, reduction = reduction_name)
+slingshot_object <- slingshot(cell_reduction,
+                              clusterLabels = seurat_subset[[clusters_to_use, drop = TRUE]],
+                              start.clus = starting_cluster, stretch = 0)
+```
+
+We can visualize each inferred each lineage on UMAP / tSNE by coloring cells by their calculated pseudotime.
+```{r}
+#define the name of the visualization reduction to use for plotting (e.g., UMAP, tSNE)
+Visual_name <- "scVI_UMAP"
+
+ss_pseudo_matrix <- slingPseudotime(slingshot_object) #extract the pseudotime values for each cell along each lineage
+cell_visualization <- Embeddings(seurat_subset, reduction = Visual_name)
+plot_data <- as.data.frame(cbind(cell_visualization, ss_pseudo_matrix))
+
+#for each lineage, create a separate UMAP / tSNE plot where cells are colored by pseudotime
+lineage_vis_plots <- lapply(colnames(ss_pseudo_matrix), function(lineage){
+  lineage_plot <- ggplot(plot_data) +
+    geom_point(mapping = aes_string(x = colnames(plot_data)[1], y = colnames(plot_data)[2], color = lineage)) +
+    ggtitle(lineage) +
+    scale_color_viridis() +
+    theme_cowplot() +
+    theme(axis.ticks = element_blank(), axis.text = element_blank())
+  print(lineage_plot)
+})
+names(lineage_vis_plots) <- colnames(ss_pseudo_matrix)
+
+#NOTE: "lineage_vis_plots" is a *list* that contains a UMAP / tSNE plot for each inferred lineage.
+#If you want to view the UMAP for a specific lineage, you can use print(lineage_vis_plots[[1]]) or print(lineage_vis_plots$Lineage1).
+#Similarly, you can save each plot by using ggsave(filename = ..., plot = lineage_vis_plots$Lineage1).
+```
+
+If you had previous subset your clusters / data, then the above UMAP / tSNE plots would only show the subsetted cells used for the analysis. The following code chunk will produce plots where all cells are shown, even those that were removed and not used in the pseudotime analysis.
+```{r}
+#extract the embeddings of all cells from the original (non-subset) Seurat object
+excluded_cell_vis <- Embeddings(seurat_object, Visual_name)
+excluded_cell_vis <- excluded_cell_vis[!rownames(excluded_cell_vis) %in% rownames(cell_visualization),]
+
+#cells that were not used in the Slingshot pseudotime will be shown as light gray
+lineage_vis_full_plots <- lapply(lineage_vis_plots, function(plot) {
+  plot <- plot +
+    geom_point(mapping = aes_string(x = colnames(excluded_cell_vis)[1], y = colnames(excluded_cell_vis)[2]),
+               data = as.data.frame(excluded_cell_vis), color = "gray90")
+  print(plot)
+  return(plot)
+})
+
+#NOTE: "lineage_vis_full_plots" is a *list* of UMAP / tSNE plots for each inferred lineage, similar to "lineage_vis_plots".
+```
+
+We can also visualize gene expression and cell-type classification along each lineage. See Figure S1D from the Worley, Everetts, et al. 2022 paper for examples.
+
+The following code will produce plots that have two elements:
+(1) Gene expression for "genes_of_interest" are plotted as curves along pseudotime.
+(2) Cell annotations along each lineage are plotted as a "rug" at the bottom of the plot. This helps visualize the different states that cells transition through across each lineage (e.g., Blastema1 -> Blastema2 -> Hinge)
+```{r}
+#define the genes to be plotted
+genes_of_interest <- c("Ilp8", "Mmp1", "upd3", "Sox15")
+
+#define the name of the cluster annotations to be extracted from the Seurat object
+rug_groups <- "seurat_clusters"
+
+#NOTE: We recommend simplifying the rug groups as much as possible.
+#If there are too many cluster labels, the colors can be difficult to tell apart.
+#For example, in Worley, Everetts, et al. paper, we simplify "Pouch1", "Pouch2", etc. into just one "Pouch" category.
+
+exprs_data <- as.matrix(GetAssayData(seurat_subset, slot = "data", assay = "RNA")[genes_of_interest,]) #extract gene expression data
+plot_data <- as.data.frame(ss_pseudo_matrix)
+plot_data$Clusters <- as.character(seurat_subset[[rug_clusters, drop = TRUE]])
+plot_data <- lapply(genes_of_interest, function(gene) {
+  plot_data$Genes <- gene
+  plot_data$Gene_Exprs <- exprs_data[gene,]
+  return(plot_data)
+})
+#At this point, plot_data is actually a list of data.frames.
+#Each data.frame contains expression data for one gene but the same pseudotime information
+#This data structure makes it easier to rearrange the data by pseudotime order (done below),
+#and then later collapse the structure in a single ggplot-compatible data.frame
+
+lineage_exprs_plots <- lapply(colnames(ss_pseudo_matrix), function(lineage){
+  plot_data_ordered <- lapply(plot_data, function(data) {
+    data <- data[!is.na(data[[lineage]]),] #remove cells not defined along the specific lineage
+    data <- data[order(data[[lineage]], decreasing = FALSE),] #order cells by pseudotime
+    data$Pseudotime_Order <- 1:NROW(data) #add the rank of cells along pseudotime
+    return(data)
+  })
+  plot_data_ordered <- do.call(what = rbind, args = plot_data_ordered) #collapse separate data.frames into one ggplot data.frame
+  
+  plot <- ggplot(data = plot_data_ordered) +
+    geom_smooth(mapping = aes(x = Pseudotime_Order, y = Gene_Exprs, color = Genes),
+                method = "gam", formula = y ~ s(x, bs = "cs"), se = FALSE) +
+    new_scale_colour() + #this function splits the plot legend into a legend for the curves and another for the cluster labels
+    geom_rug(mapping = aes(x = Pseudotime_Order, color = Clusters)) +
+    scale_color_brewer(type = "div", palette = "Set1") +
+    ylab("Gene Expression") + xlab("Pseudotime Order") + ggtitle(lineage) +
+    theme_bw() +
+    theme(title = element_text(face = "bold", size = 14),
+          axis.title = element_text(face = "bold", size = 14),
+          axis.text.y = element_text(face = "bold", size = 12),
+          axis.text.x = element_blank())
+  print(plot)
+  return(plot)
+})
+names(lineage_exprs_plots) <- colnames(ss_pseudo_matrix)
+
+#NOTE: "lineage_exprs_plots" is a list of plots
+```
+
