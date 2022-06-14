@@ -1,6 +1,6 @@
 # Worley_Everetts_Yasutomi
 
-# Ets21C sustains a pro-regenerative transcriptional program in blastema cells of Drosophila imaginal discs
+### Ets21C sustains a pro-regenerative transcriptional program in blastema cells of Drosophila imaginal discs
 
 [Melanie I. Worley](https://sites.google.com/view/melanieworley/home?authuser=0/)  * <sup> 1</sup>, Nicholas J. Everetts * <sup> 1, 2</sup>, Riku Yasutomi <sup>1</sup>, Rebecca J. Chang <sup> 1</sup>, Shrey Saretha <sup> 1</sup>, [Nir Yosef](https://yoseflab.github.io/) <sup>2, 3</sup>, and [Iswar K. Hariharan](https://mcb.berkeley.edu/labs/hariharan/)  <sup>1</sup> 
 (*</sup> co-first authorship)
